@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 import os
 import psycopg2
+import urllib.parse
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -11,6 +12,29 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
     raise ValueError("❌ DATABASE_URL er ikke sat! Tjek Railway Variables.")
+
+# Parse DATABASE_URL korrekt
+parsed_url = urllib.parse.urlparse(DATABASE_URL)
+dbname = parsed_url.path[1:]  # Fjern skråstregen foran db-navnet
+user = parsed_url.username
+password = parsed_url.password
+host = parsed_url.hostname
+port = parsed_url.port
+
+# Funktion til at oprette en ny databaseforbindelse
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(
+            dbname=dbname,
+            user=user,
+            password=password,
+            host=host,
+            port=port
+        )
+        return conn
+    except psycopg2.OperationalError as e:
+        print("❌ Databaseforbindelse fejlede:", e)
+        raise HTTPException(status_code=500, detail="Databaseforbindelse fejlede")
 
 # Expense Model
 class Expense(BaseModel):
@@ -23,15 +47,6 @@ class Expense(BaseModel):
 class Category(BaseModel):
     name: str
 
-# Funktion til at oprette en ny databaseforbindelse
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
-    except psycopg2.OperationalError as e:
-        print("❌ Databaseforbindelse fejlede:", e)
-        raise HTTPException(status_code=500, detail="Databaseforbindelse fejlede")
-
 # Endpoint: Opret en expense
 @app.post("/expenses/")
 def create_expense(expense: Expense):
@@ -43,6 +58,7 @@ def create_expense(expense: Expense):
         (expense.name, expense.price, expense.date, expense.category_id)
     )
     conn.commit()
+    
     cur.close()
     conn.close()
     return {"message": "Expense added!"}
