@@ -9,6 +9,7 @@ app = FastAPI()
 
 # Hent DATABASE_URL fra environment variables
 DATABASE_URL = os.getenv("DATABASE_URL")
+print(DATABASE_URL)
 
 if not DATABASE_URL:
     raise ValueError("❌ DATABASE_URL er ikke sat! Tjek Railway Variables.")
