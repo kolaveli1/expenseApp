@@ -30,7 +30,8 @@ def get_db_connection():
             user=user,
             password=password,
             host=host,
-            port=port
+            port=port,
+            sslmode='require'
         )
         return conn
     except psycopg2.OperationalError as e:
