@@ -7,7 +7,7 @@ from datetime import datetime
 
 app = FastAPI()
 
-# Hent DATABASE_URL fra environment variables
+# Hent DATABASE_URL fra miljøvariabler
 DATABASE_URL = os.getenv("DATABASE_URL")
 print(DATABASE_URL)
 
@@ -22,7 +22,7 @@ password = parsed_url.password
 host = parsed_url.hostname
 port = parsed_url.port
 
-# Funktion til at oprette en ny databaseforbindelse
+# Funktion til at oprette en ny databaseforbindelse med SSL
 def get_db_connection():
     try:
         conn = psycopg2.connect(
@@ -59,11 +59,12 @@ def create_expense(expense: Expense):
         "INSERT INTO expenses (name, price, date, category_id) VALUES (%s, %s, %s, %s) RETURNING id;",
         (expense.name, expense.price, expense.date, expense.category_id)
     )
+    expense_id = cur.fetchone()[0]
     conn.commit()
     
     cur.close()
     conn.close()
-    return {"message": "Expense added!"}
+    return {"message": "Expense added!", "id": expense_id}
 
 # Endpoint: Hent alle expenses
 @app.get("/expenses/")
@@ -81,7 +82,10 @@ def get_expenses():
     cur.close()
     conn.close()
 
-    return {"expenses": [{"id": e[0], "name": e[1], "price": e[2], "date": e[3], "category": e[4]} for e in expenses]}
+    expenses_list = [
+        {"id": e[0], "name": e[1], "price": e[2], "date": e[3], "category": e[4]} for e in expenses
+    ]
+    return {"expenses": expenses_list}
 
 # Endpoint: Opret en kategori
 @app.post("/categories/")
@@ -90,12 +94,13 @@ def create_category(category: Category):
     cur = conn.cursor()
 
     cur.execute("INSERT INTO categories (name) VALUES (%s) RETURNING id;", (category.name,))
+    category_id = cur.fetchone()[0]
     conn.commit()
 
     cur.close()
     conn.close()
     
-    return {"message": "Category added!"}
+    return {"message": "Category added!", "id": category_id}
 
 # Endpoint: Hent alle kategorier
 @app.get("/categories/")
@@ -109,7 +114,8 @@ def get_categories():
     cur.close()
     conn.close()
 
-    return {"categories": [{"id": c[0], "name": c[1]} for c in categories]}
+    categories_list = [{"id": c[0], "name": c[1]} for c in categories]
+    return {"categories": categories_list}
 
 # Endpoint: Slet en kategori
 @app.delete("/categories/{category_id}")
